@@ -11,6 +11,15 @@ pub fn run() {
       }
       Ok(())
     })
+    .invoke_handler(tauri::generate_handler![
+      start,
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn start() -> String {
+  let block_number = 5;
+  format!("Started, block number {}", block_number)
 }
