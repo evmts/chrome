@@ -1,4 +1,5 @@
 use alloy::hex;
+use alloy::transports::http::reqwest;
 use serde_json::json;
 use tokio::sync::Mutex;
 use alloy::primitives::{Address, B256};
@@ -1070,7 +1071,87 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
             }
         },
 
-        _ => {
+        "eth_getProof" => {
+            let address = match parse_address(&params[0]) {
+                Ok(addr) => addr,
+                Err(e) => {
+                    handle_response(&mut response, JsonRpcResult::Error(-32602, e));
+                    return Ok(response);
+                }
+            };
+            
+            let storage_keys = match params[1].as_array() {
+                Some(keys) => {
+                    let mut result = Vec::new();
+                    for key in keys {
+                        match parse_hash(key) {
+                            Ok(hash) => result.push(hash),
+                            Err(e) => {
+                                handle_response(&mut response, JsonRpcResult::Error(-32602, e));
+                                return Ok(response);
+                            }
+                        }
+                    }
+                    result
+                },
+                None => {
+                    handle_response(&mut response, JsonRpcResult::Error(
+                        -32602,
+                        "Invalid params: storage keys must be an array".to_string()
+                    ));
+                    return Ok(response);
+                }
+            };
+
+            let block_param = "latest"; // Or parse from params[2] if needed
+
+            let state_guard = state.lock().await;
+            match state_guard.client.as_ref() {
+                Some(_) => {
+                    let client = reqwest::Client::new();
+                    
+                    let payload = serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "method": "eth_getProof",
+                        "params": [
+                            format!("0x{:x}", address),
+                            storage_keys.iter().map(|k| format!("0x{:x}", k)).collect::<Vec<_>>(),
+                            block_param
+                        ],
+                        "id": 1
+                    });
+
+                    match client
+                        .post("YOUR_ALCHEMY_URL")
+                        .json(&payload)
+                        .send()
+                        .await {
+                            Ok(http_response) => {
+                                match http_response.json::<serde_json::Value>().await {
+                                    Ok(proof) => handle_response(&mut response, JsonRpcResult::Success(proof)),
+                                    Err(e) => handle_response(&mut response, JsonRpcResult::Error(
+                                        -32603,
+                                        format!("Failed to parse response: {}", e)
+                                    ))
+                                }
+                            },
+                            Err(e) => handle_response(&mut response, JsonRpcResult::Error(
+                                -32603,
+                                format!("Failed to send request: {}", e)
+                            ))
+                    }
+                },
+                None => {
+                    handle_response(&mut response, JsonRpcResult::Error(
+                        -32000,
+                        "Light client not initialized".to_string()
+                    ));
+                    return Ok(response);
+                }
+            }
+        },
+
+        _u => {
             handle_response(&mut response, JsonRpcResult::Error(
                 -32601,
                 format!("Method not found: {} is not supported", method)
