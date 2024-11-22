@@ -1,3 +1,4 @@
+use serde_json::json;
 use tokio::sync::Mutex;
 
 use alloy::rpc::types::Transaction;
@@ -24,6 +25,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       start,
       get_block,
+      request,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -71,6 +73,128 @@ async fn get_block(state: tauri::State<'_, Mutex<AppState>>) -> Result<Option<Bl
         .await
         .map_err(|e| format!("Failed to get latest block: {}", e))
 }
+
+#[tauri::command]
+async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut response = serde_json::json!({
+        "jsonrpc": "2.0"
+    });
+
+    if let Some(id) = request.get("id") {
+        response.as_object_mut().unwrap().insert("id".to_string(), id.clone());
+    }
+
+    match request.get("jsonrpc").and_then(|v| v.as_str()) {
+        Some("2.0") => "2.0",
+        _ => {
+            response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                "code": -32600,
+                "message": "Invalid Request: only JSON-RPC 2.0 is supported"
+            }));
+            return Ok(response);
+        }
+    };
+
+    // Get method
+    let method = match request.get("method").and_then(|v| v.as_str()) {
+        Some(m) => m,
+        None => {
+            response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                "code": -32600,
+                "message": "Invalid Request: missing method"
+            }));
+            return Ok(response);
+        }
+    };
+
+    let params = match request.get("params").and_then(|v| v.as_array()) {
+        Some(p) => p,
+        None => {
+            response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                "code": -32602,
+                "message": "Invalid params: missing or invalid params"
+            }));
+            return Ok(response);
+        }
+    };
+
+    match method {
+        "eth_getBlockByNumber" => {
+            if params.len() != 2 {
+                response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                    "code": -32602,
+                    "message": "Invalid params: eth_getBlockByNumber requires exactly 2 parameters"
+                }));
+                return Ok(response);
+            }
+
+            let block_tag = match params[0].as_str() {
+                Some("latest") => BlockTag::Latest,
+                _ => {
+                    response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                        "code": -32602,
+                        "message": "Invalid params: only 'latest' block tag is currently supported"
+                    }));
+                    return Ok(response);
+                }
+            };
+
+            let full_tx = match params[1].as_bool() {
+                Some(b) => b,
+                None => {
+                    response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                        "code": -32602,
+                        "message": "Invalid params: second parameter must be a boolean"
+                    }));
+                    return Ok(response);
+                }
+            };
+
+            let state_guard = state.lock().await;
+            let client = match state_guard.client.as_ref() {
+                Some(c) => c,
+                None => {
+                    response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                        "code": -32000,
+                        "message": "Light client not initialized"
+                    }));
+                    return Ok(response);
+                }
+            };
+
+            match client.get_block_by_number(block_tag, full_tx).await {
+                Ok(block) => {
+                    match serde_json::to_value(block) {
+                        Ok(block_value) => {
+                            response.as_object_mut().unwrap().insert("result".to_string(), block_value);
+                        },
+                        Err(e) => {
+                            response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                                "code": -32603,
+                                "message": format!("Internal error: failed to serialize block: {}", e)
+                            }));
+                        }
+                    }
+                },
+                Err(e) => {
+                    response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                        "code": -32603,
+                        "message": format!("Internal error: failed to get block: {}", e)
+                    }));
+                }
+            }
+        },
+        _ => {
+            response.as_object_mut().unwrap().insert("error".to_string(), json!({
+                "code": -32601,
+                "message": format!("Method not found: {} is not supported", method)
+            }));
+        }
+    }
+
+    Ok(response)
+}
+
 
 struct AppState {
     client: Option<EthereumClient<FileDB>>,

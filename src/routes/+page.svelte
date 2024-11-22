@@ -10,7 +10,14 @@
   }
 
   const getBlock = async () => {
-    block = await invoke('get_block')
+    const jsonRpcRequest = {
+      jsonrpc: "2.0",
+      method: "get_block",
+      params: [],
+      id: 1
+    }
+    const jsonRpcResponse: any = await invoke('request', { request: jsonRpcRequest })
+    block = jsonRpcResponse.result
   }
 
   $effect(() => {
