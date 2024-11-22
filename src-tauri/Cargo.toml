@@ -24,3 +24,17 @@ log = "0.4"
 tauri = { version = "2.1.0", features = [] }
 tauri-plugin-log = "2.0.0-rc"
 helios = { git = "https://github.com/a16z/helios.git" }
+# execution
+alloy = { version = "0.2.1", features = [
+    "rpc-types",
+    "consensus",
+    "rlp",
+    "k256",
+    "provider-http",
+    "sol-types",
+    "network",
+    "ssz",
+    "json-rpc",
+    "signers",
+] }
+tokio = { version = "1.36", features = ["full"] }
