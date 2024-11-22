@@ -80,17 +80,27 @@ pub fn run() {
 }
 
 #[tauri::command]
-async fn start(state: tauri::State<'_, Mutex<AppState>>) -> Result<String, String> {
+async fn start(
+    state: tauri::State<'_, Mutex<AppState>>, 
+    rpc_url: String,
+    consensus_rpc: Option<String>,
+    chain_id: u64,
+) -> Result<String, String> {
     let mut client = {
         let state_guard = state.lock().await;
         if state_guard.client.is_some() {
             return Err("Light client is already running".to_string());
         }
         
+        let consensus_url = consensus_rpc.unwrap_or_else(|| "https://www.lightclientdata.org".to_string());
+        
+        let network = get_network(chain_id)
+            .map_err(|e| format!("Failed to get network: {}", e))?;
+        
         EthereumClientBuilder::new()
-            .network(Network::MAINNET)
-            .consensus_rpc("https://www.lightclientdata.org")
-            .execution_rpc("https://eth-mainnet.g.alchemy.com/v2/")
+            .network(network)
+            .consensus_rpc(&consensus_url)
+            .execution_rpc(&rpc_url)
             .load_external_fallback()
             .data_dir(PathBuf::from("/tmp/helios"))
             .build()
@@ -106,6 +116,7 @@ async fn start(state: tauri::State<'_, Mutex<AppState>>) -> Result<String, Strin
     {
         let mut state_guard = state.lock().await;
         state_guard.client = Some(client);
+        state_guard.rpc_url = rpc_url;
     }
 
     Ok("Light client started and synced successfully".to_string())
@@ -1122,7 +1133,7 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
                     });
 
                     match client
-                        .post("YOUR_ALCHEMY_URL")
+                        .post(&state_guard.rpc_url)
                         .json(&payload)
                         .send()
                         .await {
@@ -1164,10 +1175,21 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
 
 struct AppState {
     client: Option<EthereumClient<FileDB>>,
+    rpc_url: String,
 }
 
 impl Default for AppState {
     fn default() -> Self {
-        Self { client: None }
+        Self { 
+            client: None,
+            rpc_url: String::new(),
+        }
+    }
+}
+
+fn get_network(chain_id: u64) -> Result<Network, String> {
+    match chain_id {
+        1 => Ok(Network::MAINNET),
+        _ => Err(format!("Unsupported chain ID: {}. Supported chains are: Mainnet (1), Base (8453), Optimism (10)", chain_id))
     }
 }

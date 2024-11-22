@@ -2,8 +2,10 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { createMemoryClient, type EIP1193RequestFn, type MemoryClient } from 'tevm';
 	import { type PublicClient, custom, createPublicClient } from 'viem';
+	import { PUBLIC_ALCHEMY_URL } from '$env/static/public';
 
 	let startMessage = $state<string>();
+	let rpcUrl = $state<string>(PUBLIC_ALCHEMY_URL);
 
 	let tevmClient = $state<MemoryClient | undefined>(undefined);
 	let client = $state<PublicClient>(
@@ -19,7 +21,11 @@
 	let block = $state<any>();
 
 	const start = async () => {
-		startMessage = await invoke('start');
+		startMessage = await invoke('start', {
+			rpcUrl: rpcUrl,
+			consensusRpc: null,
+			chainId: 1
+		});
 	};
 
 	const fork = () => {
