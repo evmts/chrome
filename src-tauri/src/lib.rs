@@ -139,6 +139,7 @@ async fn get_block(state: tauri::State<'_, Mutex<AppState>>) -> Result<Option<Bl
 
 #[tauri::command]
 async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::Value) -> Result<serde_json::Value, String> {
+    println!("Request: {}", serde_json::to_string_pretty(&request).unwrap());
     let mut response = json!({"jsonrpc": "2.0"});
 
     if let Some(id) = request.get("id") {
