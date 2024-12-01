@@ -401,7 +401,7 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
                 Some(client) => {
                     match client.get_block_transaction_count_by_hash(hash).await {
                         Ok(count) => handle_response(&mut response, JsonRpcResult::Success(
-                            json!(format!("0x{:x}", count))
+                            json!(format!("0x{:x}", count.unwrap_or(0)))
                         )),
                         Err(e) => handle_response(&mut response, JsonRpcResult::Error(
                             -32603,
@@ -433,7 +433,7 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
                 Some(client) => {
                     match client.get_block_transaction_count_by_number(block_tag).await {
                         Ok(count) => handle_response(&mut response, JsonRpcResult::Success(
-                            json!(format!("0x{:x}", count))
+                            json!(format!("0x{:x}", count.unwrap_or(0)))
                         )),
                         Err(e) => handle_response(&mut response, JsonRpcResult::Error(
                             -32603,
@@ -707,7 +707,7 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
             let state_guard = state.lock().await;
             match state_guard.client.as_ref() {
                 Some(client) => {
-                    match client.get_new_filter(&filter).await {
+                    match client.new_filter(&filter).await {
                         Ok(filter_id) => handle_response(&mut response, JsonRpcResult::Success(
                             json!(format!("0x{:x}", filter_id))
                         )),
@@ -731,7 +731,7 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
             let state_guard = state.lock().await;
             match state_guard.client.as_ref() {
                 Some(client) => {
-                    match client.get_new_block_filter().await {
+                    match client.new_block_filter().await {
                         Ok(filter_id) => handle_response(&mut response, JsonRpcResult::Success(
                             json!(format!("0x{:x}", filter_id))
                         )),
@@ -755,7 +755,7 @@ async fn request(state: tauri::State<'_, Mutex<AppState>>, request: serde_json::
             let state_guard = state.lock().await;
             match state_guard.client.as_ref() {
                 Some(client) => {
-                    match client.get_new_pending_transaction_filter().await {
+                    match client.new_pending_transaction_filter().await {
                         Ok(filter_id) => handle_response(&mut response, JsonRpcResult::Success(
                             json!(format!("0x{:x}", filter_id))
                         )),

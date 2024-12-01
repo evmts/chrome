@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@shazow/whatsabi':
+        specifier: ^0.17.0
+        version: 0.17.0(@noble/hashes@1.5.0)(typescript@5.6.3)(zod@3.23.8)
       '@tauri-apps/api':
         specifier: ^2.1.1
         version: 2.1.1
@@ -500,6 +503,11 @@ packages:
 
   '@scure/bip39@1.4.0':
     resolution: {integrity: sha512-BEEm6p8IueV/ZTfQLp/0vhw4NPnT9oWf5+28nvmeUICjP99f4vr2d+qc7AVGDDtwRep6ifR43Yed9ERVmiITzw==}
+
+  '@shazow/whatsabi@0.17.0':
+    resolution: {integrity: sha512-nebwY6SpU3saM3QtQtq0p9oPizZ7TfYi1crf9cvdDF2YDnz48yrlf0NwOZXQhdcScTwt8HFZ+Fpt/hbluFJt2w==}
+    peerDependencies:
+      '@noble/hashes': ^1
 
   '@sveltejs/adapter-auto@3.3.1':
     resolution: {integrity: sha512-5Sc7WAxYdL6q9j/+D0jJKjGREGlfIevDyHSQ2eNETHcB1TKlQWHcAo8AS8H1QdjNvSXpvOwNjykDUHPEAyGgdQ==}
@@ -1608,6 +1616,14 @@ packages:
       typescript:
         optional: true
 
+  ox@0.2.2:
+    resolution: {integrity: sha512-QWCyFfVk5hFOhg13SGqRKih5B7EBucrf+Z1dfmN9jJQ8MZdrRx9mbD78JQL5ogSzDT7fcHgyMCaXd/3AWn6xHQ==}
+    peerDependencies:
+      typescript: '>=5.4.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   p-limit@3.1.0:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
     engines: {node: '>=10'}
@@ -2560,6 +2576,14 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.5.0
       '@scure/base': 1.1.9
+
+  '@shazow/whatsabi@0.17.0(@noble/hashes@1.5.0)(typescript@5.6.3)(zod@3.23.8)':
+    dependencies:
+      '@noble/hashes': 1.5.0
+      ox: 0.2.2(typescript@5.6.3)(zod@3.23.8)
+    transitivePeerDependencies:
+      - typescript
+      - zod
 
   '@sveltejs/adapter-auto@3.3.1(@sveltejs/kit@2.8.1(@sveltejs/vite-plugin-svelte@4.0.1(svelte@5.2.7)(vite@5.4.11(@types/node@22.9.1)(terser@5.36.0)))(svelte@5.2.7)(vite@5.4.11(@types/node@22.9.1)(terser@5.36.0)))':
     dependencies:
@@ -3989,6 +4013,20 @@ snapshots:
   os-tmpdir@1.0.2: {}
 
   ox@0.1.2(typescript@5.6.3)(zod@3.23.8):
+    dependencies:
+      '@adraffy/ens-normalize': 1.11.0
+      '@noble/curves': 1.6.0
+      '@noble/hashes': 1.5.0
+      '@scure/bip32': 1.5.0
+      '@scure/bip39': 1.4.0
+      abitype: 1.0.6(typescript@5.6.3)(zod@3.23.8)
+      eventemitter3: 5.0.1
+    optionalDependencies:
+      typescript: 5.6.3
+    transitivePeerDependencies:
+      - zod
+
+  ox@0.2.2(typescript@5.6.3)(zod@3.23.8):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
       '@noble/curves': 1.6.0

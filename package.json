@@ -34,6 +34,7 @@
 		"vitest": "^2.0.4"
 	},
 	"dependencies": {
+		"@shazow/whatsabi": "^0.17.0",
 		"@tauri-apps/api": "^2.1.1",
 		"@tevm/ts-plugin": "1.0.0-next.124",
 		"tevm": "1.0.0-next.126",
