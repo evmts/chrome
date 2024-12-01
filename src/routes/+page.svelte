@@ -2,11 +2,12 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { createMemoryClient, type EIP1193RequestFn, type JsonRpcResponse, type MemoryClient } from 'tevm';
 	import { type PublicClient, custom, createPublicClient } from 'viem';
-	import { whatsabi } from '@shazow/whatsabi';
+	import { whatsabi, loaders } from '@shazow/whatsabi';
 	import { 
 		PUBLIC_EXECUTION_RPC,
 		PUBLIC_CONSENSUS_RPC 
 	} from '$env/static/public';
+	import { onMount } from 'svelte';
 
 	let startMessage = $state<string>();
 	let rpcUrl = $state<string>(PUBLIC_EXECUTION_RPC);
@@ -36,20 +37,23 @@
 
 	let block = $state<any>();
 	let contractAddress = $state<string>(localStorage.getItem('contractAddress') || '');
-	let contractAbi = $state<any>(undefined);
-	let iframeRef = $state<HTMLIFrameElement>();
-	let generatedUI = $state<string>('');
-	let openAiKey = $state<string>(localStorage.getItem('openAiKey') || '');
+	let openAiKey = $state(localStorage.getItem('openai-key') || '');
+	let etherscanKey = $state(localStorage.getItem('etherscan-key') || '');
+
+	$effect(() => {
+		if (openAiKey) {
+			localStorage.setItem('openai-key', openAiKey);
+		}
+	});
+
+	$effect(() => {
+		if (etherscanKey) {
+			localStorage.setItem('etherscan-key', etherscanKey);
+		}
+	});
 
 	// Add a mounted flag
 	let iframeMounted = $state(false);
-
-	// Create a handler for when the iframe is mounted
-	const handleIframeMount = (node: HTMLIFrameElement) => {
-			console.log('Iframe mounted');
-			iframeRef = node;
-			iframeMounted = true;
-	};
 
 	const start = async () => {
 		startMessage = await invoke('start', {
@@ -81,10 +85,16 @@
 	const handleAbi = async () => {
 		try {
 			const trimmedAddress = contractAddress.trim();
-			const result = await whatsabi.autoload(trimmedAddress, { 
-				provider: client 
-			});
-			contractAbi = result.abi;
+			
+			// Create custom ABI loader with Etherscan if key is provided
+			const config: any = { provider: client };
+			if (etherscanKey.trim()) {
+				config.abiLoader = new loaders.EtherscanABILoader({ 
+					apiKey: etherscanKey.trim() 
+				});
+			}
+
+			const result = await whatsabi.autoload(trimmedAddress, config);
 
 			// Try to get contract name if available
 			let contractName = 'Unknown Contract';
@@ -121,9 +131,16 @@
 						}, {
 							role: "user",
 							content: `Create a user interface for interacting with the "${contractName ?? trimmedAddress}" smart contract. Requirements:
+							- Title should be "Generated contract interface for ${contractName}"
 							- Output raw HTML without any markdown tags or code blocks (no \`\`\`html or similar)
 							- Use only HTML and inline CSS (no external dependencies)
-							- Group similar functions together (read operations, write operations, events)
+							- Group similar functionality together. For example, if multiple functions take a tokenId we should
+							  be able to insert the tokenId once and view all relavent info in a table form
+							- Writes should be similar. If we can transfer a tokenId we should have that functionality appear after
+							  inserting a tokenId for example
+							- Use your intuition. For example, if you notice the contract is a known contract like uniswap use your external knowledge of how uniswap works. Same for ERC20 ERC721 and any other type of contract
+							- The user is currently logged in with address ${'0x9E2597dD51A8d4030AB7C2fBa66A061e9F709B20'}. Default to this value if it appears a specific piece of functionality applies to this value. If the address is unrelated to this address do not default.
+							- When we default a specific value and that is the only value we need go ahead and eagerly fetch
 							- Include minimal but professional styling
 							- Add proper error handling and success messages
 							- Make all inputs properly labeled and intuitive
@@ -131,6 +148,7 @@
 							- Use the globally available 'viemProvider' object for blockchain interactions
 							  (it's a Viem-compatible provider injected as window.viemProvider)
 							- Contract address is: ${trimmedAddress}
+							- Make sure all functionality of the contract abi is included
 							- Think like a designer. Don't just put a series of inputs try to make an intuitive pleasant UI
 							- Make use of modals when it makes sense
 							- When building this UI first think about what the contract looks like and think of a product doc first
@@ -269,21 +287,34 @@
   <input 
     type="text" 
     bind:value={contractAddress} 
-    placeholder="Enter contract address"
+    placeholder="Enter contract address or ENS"
   />
-  <button onclick={handleAbi}>Get ABI</button>
+  {#if contractAddress}
+    <button onclick={handleAbi}>Get ABI</button>
+  {/if}
 
+  <iframe 
+    sandbox="allow-scripts allow-same-origin"
+    style="width: 100%; height: 800px; border: 2px solid red; margin-top: 20px;"
+    title="Generated UI"
+    srcdoc="<div style='text-align: center; padding: 20px; font-family: sans-serif;'>Contract UI will appear here</div>"
+  ></iframe>
   <input 
     type="password"
     bind:value={openAiKey}
     placeholder="Enter OpenAI API Key"
   />
 
-  <iframe 
-    sandbox="allow-scripts allow-same-origin"
-    style="width: 100%; height: 800px; border: 2px solid red; margin-top: 20px;"
-	title="Generated UI"
-  ></iframe>
+  <div class="input-group">
+    <label for="etherscan-key">Etherscan API Key (optional):</label>
+    <input 
+      type="password" 
+      id="etherscan-key"
+      bind:value={etherscanKey}
+      placeholder="Enter your Etherscan API key"
+    />
+  </div>
+
 </div>
 
 <p>Tauri <a href="https://v1.tauri.app/v1/guides/getting-started/setup/sveltekit">docs</a></p>
